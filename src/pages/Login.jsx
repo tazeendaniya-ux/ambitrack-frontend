@@ -1,9 +1,11 @@
 import { useState, useContext } from "react";
+import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 import { UserContext } from "../context/UserContext";
 
 export default function Login() {
   const { login } = useContext(UserContext);
+  const navigate = useNavigate();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -21,22 +23,22 @@ export default function Login() {
 
       const user = response.data.user;
 
-      // ✅ Context login (NEW)
+      // Save user in context
       login(user);
 
-      // (Optional backup - you can remove later)
+      // Optional localStorage backup
       localStorage.setItem("user", JSON.stringify(user));
       localStorage.setItem("role", user.role);
 
       alert("Login Successful!");
 
-      // Redirect based on role
+      // Redirect using React Router
       if (user.role === "patient") {
-        window.location.href = "/patient";
+        navigate("/patient");
       } else if (user.role === "driver") {
-        window.location.href = "/driver";
+        navigate("/driver");
       } else if (user.role === "hospital") {
-        window.location.href = "/hospital";
+        navigate("/hospital");
       }
 
       setEmail("");
@@ -63,7 +65,12 @@ export default function Login() {
         boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
       }}
     >
-      <h1 style={{ textAlign: "center", marginBottom: "20px" }}>
+      <h1
+        style={{
+          textAlign: "center",
+          marginBottom: "20px",
+        }}
+      >
         Login
       </h1>
 
