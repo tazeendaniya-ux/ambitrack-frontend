@@ -3,6 +3,7 @@ import api from "../services/api";
 import MapView from "../components/MapView";
 import { motion } from "framer-motion";
 import { io } from "socket.io-client";
+import toast from "react-hot-toast";
 
 export default function PatientDashboard() {
   const [patientName, setPatientName] = useState("");
@@ -10,7 +11,6 @@ export default function PatientDashboard() {
   const [emergencyType, setEmergencyType] = useState("");
   const [latestEmergency, setLatestEmergency] = useState(null);
 
-  // Demo ambulance location
   const [ambulanceLocation, setAmbulanceLocation] = useState({
     lat: 17.42,
     lng: 78.41,
@@ -66,7 +66,7 @@ export default function PatientDashboard() {
             longitude: position.coords.longitude,
           });
 
-          alert("🚑 Emergency sent!");
+          toast.success("🚑 Emergency request sent!");
 
           setPatientName("");
           setPhone("");
@@ -75,10 +75,10 @@ export default function PatientDashboard() {
           fetchLatestEmergency();
         } catch (err) {
           console.log(err);
-          alert("Failed to send request");
+          toast.error("Failed to send request");
         }
       },
-      () => alert("Location error"),
+      () => toast.error("Location access denied"),
       {
         enableHighAccuracy: true,
         timeout: 15000,
@@ -121,7 +121,7 @@ export default function PatientDashboard() {
     return () => clearInterval(timer);
   }, []);
 
-  // ================= DEMO AMBULANCE MOVEMENT =================
+  // ================= DEMO MOVEMENT =================
   useEffect(() => {
     const moveAmbulance = setInterval(() => {
       setAmbulanceLocation((prev) => {
@@ -168,7 +168,7 @@ export default function PatientDashboard() {
   const getETA = (distance) => {
     if (!distance) return 0;
 
-    const averageSpeed = 40; // km/h
+    const averageSpeed = 40;
 
     return (distance / averageSpeed) * 60;
   };
@@ -187,24 +187,77 @@ export default function PatientDashboard() {
 
   return (
     <motion.div
+      initial={{ opacity: 0, y: 25 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
       style={{
-        maxWidth: 900,
+        maxWidth: "1100px",
         margin: "40px auto",
+        padding: "0 20px",
       }}
     >
-      <h1>🚑 Patient Dashboard</h1>
+      {/* HEADER */}
+      <div
+        style={{
+          textAlign: "center",
+          marginBottom: "30px",
+        }}
+      >
+        <h1
+          style={{
+            fontSize: "2.8rem",
+            color: "#0F172A",
+            marginBottom: "10px",
+          }}
+        >
+          🚑 Patient Emergency Center
+        </h1>
+
+        <p
+          style={{
+            color: "#64748B",
+            fontSize: "1rem",
+          }}
+        >
+          Request emergency assistance and track your ambulance in real time.
+        </p>
+      </div>
+
+      {/* STATS */}
+      {latestEmergency && (
+        <div style={statsGrid}>
+          <div style={statCard}>
+            <h3>🚨 Status</h3>
+            <p style={statValue}>{latestEmergency.status}</p>
+          </div>
+
+          <div style={statCard}>
+            <h3>📍 Distance</h3>
+            <p style={statValue}>{distance.toFixed(2)} km</p>
+          </div>
+
+          <div style={statCard}>
+            <h3>⏳ ETA</h3>
+            <p style={statValue}>{eta.toFixed(0)} min</p>
+          </div>
+        </div>
+      )}
 
       {/* SOS FORM */}
       <div style={cardStyle}>
+        <h2 style={{ marginBottom: "20px" }}>
+          🚨 Request Emergency Ambulance
+        </h2>
+
         <input
-          placeholder="Name"
+          placeholder="Patient Name"
           value={patientName}
           onChange={(e) => setPatientName(e.target.value)}
           style={inputStyle}
         />
 
         <input
-          placeholder="Phone"
+          placeholder="Phone Number"
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
           style={inputStyle}
@@ -218,31 +271,41 @@ export default function PatientDashboard() {
         />
 
         <button onClick={handleSOS} style={sosBtn}>
-          🚨 SOS
+          🚨 Request Ambulance
         </button>
       </div>
 
       {/* STATUS */}
       {latestEmergency && (
         <div style={cardStyle}>
-          <h3>Status: {latestEmergency.status}</h3>
+          <h2>🚑 Live Tracking Status</h2>
 
           <p>
-            Driver Location:{" "}
+            <strong>Driver Location:</strong>{" "}
             {ambulanceLocation
-              ? `${ambulanceLocation.lat.toFixed(6)}, ${ambulanceLocation.lng.toFixed(6)}`
+              ? `${ambulanceLocation.lat.toFixed(
+                  6
+                )}, ${ambulanceLocation.lng.toFixed(6)}`
               : "Not Connected"}
           </p>
 
-          <p>Distance: {distance.toFixed(2)} km</p>
+          <p>
+            <strong>Distance:</strong> {distance.toFixed(2)} km
+          </p>
 
-          <p>ETA: {eta.toFixed(0)} min</p>
+          <p>
+            <strong>ETA:</strong> {eta.toFixed(0)} minutes
+          </p>
         </div>
       )}
 
       {/* MAP */}
       {latestEmergency && (
         <div style={cardStyle}>
+          <h2 style={{ marginBottom: "20px" }}>
+            🗺️ Live Ambulance Map
+          </h2>
+
           <MapView
             patientLat={latestEmergency.latitude}
             patientLng={latestEmergency.longitude}
@@ -255,24 +318,52 @@ export default function PatientDashboard() {
   );
 }
 
-const cardStyle = {
-  padding: 20,
-  marginTop: 20,
+const statsGrid = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+  gap: "20px",
+  marginBottom: "20px",
+};
+
+const statCard = {
   background: "#fff",
-  borderRadius: 10,
+  borderRadius: "18px",
+  padding: "20px",
+  textAlign: "center",
+  boxShadow: "0 10px 25px rgba(0,0,0,0.08)",
+};
+
+const statValue = {
+  fontSize: "1.4rem",
+  fontWeight: "700",
+  marginTop: "10px",
+};
+
+const cardStyle = {
+  padding: "24px",
+  marginTop: "20px",
+  background: "#fff",
+  borderRadius: "20px",
+  boxShadow: "0 10px 25px rgba(0,0,0,0.08)",
 };
 
 const inputStyle = {
   width: "100%",
-  padding: 10,
-  marginBottom: 10,
+  padding: "14px",
+  marginBottom: "15px",
+  borderRadius: "12px",
+  border: "1px solid #CBD5E1",
+  fontSize: "16px",
 };
 
 const sosBtn = {
   width: "100%",
-  padding: 15,
-  background: "red",
+  padding: "16px",
+  background: "linear-gradient(135deg,#EF4444,#DC2626)",
   color: "white",
   border: "none",
+  borderRadius: "12px",
   cursor: "pointer",
+  fontWeight: "700",
+  fontSize: "18px",
 };

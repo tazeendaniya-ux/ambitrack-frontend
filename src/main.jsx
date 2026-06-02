@@ -5,7 +5,7 @@ import App from "./App";
 // Existing styles
 import "./styles/global.css";
 
-// New Day 1 Design System
+// Day 1 Design System
 import "./styles/theme.css";
 
 import "./utils/fixLeafletIcons";
@@ -13,11 +13,23 @@ import "./utils/fixLeafletIcons";
 import UserProvider from "./context/UserContext";
 import EmergencyProvider from "./context/EmergencyContext";
 
+// Toast
+import { Toaster } from "react-hot-toast";
+
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <UserProvider>
       <EmergencyProvider>
+
+        <Toaster
+          position="top-right"
+          toastOptions={{
+            duration: 3000,
+          }}
+        />
+
         <App />
+
       </EmergencyProvider>
     </UserProvider>
   </React.StrictMode>
