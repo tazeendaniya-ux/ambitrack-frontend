@@ -1,5 +1,6 @@
 import React from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Toaster } from "react-hot-toast";
 
 // Pages
 import Home from "./pages/Home";
@@ -15,7 +16,20 @@ import Navbar from "./components/Navbar";
 export default function App() {
   return (
     <BrowserRouter>
-      {/* Global Navbar (visible on all pages) */}
+      {/* Toast Notifications */}
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          duration: 3000,
+          style: {
+            borderRadius: "12px",
+            fontFamily: "Inter, sans-serif",
+            padding: "12px 16px",
+          },
+        }}
+      />
+
+      {/* Global Navbar */}
       <Navbar />
 
       <Routes>

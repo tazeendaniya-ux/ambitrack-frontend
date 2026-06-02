@@ -1,5 +1,7 @@
 import { useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
+
 import api from "../services/api";
 import { UserContext } from "../context/UserContext";
 
@@ -30,9 +32,10 @@ export default function Login() {
       localStorage.setItem("user", JSON.stringify(user));
       localStorage.setItem("role", user.role);
 
-      alert("Login Successful!");
+      // Professional notification
+      toast.success("Login Successful!");
 
-      // Redirect using React Router
+      // Redirect based on role
       if (user.role === "patient") {
         navigate("/patient");
       } else if (user.role === "driver") {
@@ -43,13 +46,12 @@ export default function Login() {
 
       setEmail("");
       setPassword("");
-
     } catch (error) {
       console.error(error);
 
-      alert(
+      toast.error(
         error.response?.data?.message ||
-        "Login Failed"
+          "Login Failed"
       );
     }
   };
