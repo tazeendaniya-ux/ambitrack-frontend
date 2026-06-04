@@ -1,8 +1,13 @@
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  Popup,
+  Polyline,
+} from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 
-// Fix default marker icon issue (VERY IMPORTANT)
 delete L.Icon.Default.prototype._getIconUrl;
 
 L.Icon.Default.mergeOptions({
@@ -20,9 +25,14 @@ export default function MapView({
   ambulanceLat,
   ambulanceLng,
 }) {
-  // 🛡️ fallback (prevents map crash)
-  const centerLat = patientLat || 20.5937; // India center fallback
-  const centerLng = patientLng || 78.9629;
+  const centerLat = patientLat ?? 20.5937;
+  const centerLng = patientLng ?? 78.9629;
+
+  const hasPatient =
+    patientLat !== null &&
+    patientLat !== undefined &&
+    patientLng !== null &&
+    patientLng !== undefined;
 
   const hasAmbulance =
     ambulanceLat !== null &&
@@ -35,31 +45,57 @@ export default function MapView({
       center={[centerLat, centerLng]}
       zoom={13}
       style={{
-        height: "400px",
+        height: "450px",
         width: "100%",
         borderRadius: "12px",
-        overflow: "hidden",
       }}
     >
-      {/* Map tiles */}
       <TileLayer
         attribution="&copy; OpenStreetMap contributors"
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
 
-      {/* 🚨 Patient Marker */}
-      {patientLat && patientLng && (
-        <Marker position={[patientLat, patientLng]}>
-          <Popup>🚨 Patient Location</Popup>
+      {hasPatient && (
+        <Marker
+          position={[
+            patientLat,
+            patientLng,
+          ]}
+        >
+          <Popup>
+            🚨 Patient Location
+          </Popup>
         </Marker>
       )}
 
-      {/* 🚑 Ambulance Marker (LIVE READY) */}
       {hasAmbulance && (
-        <Marker position={[ambulanceLat, ambulanceLng]}>
-          <Popup>🚑 Ambulance Location (Live)</Popup>
+        <Marker
+          position={[
+            ambulanceLat,
+            ambulanceLng,
+          ]}
+        >
+          <Popup>
+            🚑 Ambulance Location
+          </Popup>
         </Marker>
       )}
+
+      {hasPatient &&
+        hasAmbulance && (
+          <Polyline
+            positions={[
+              [
+                ambulanceLat,
+                ambulanceLng,
+              ],
+              [
+                patientLat,
+                patientLng,
+              ],
+            ]}
+          />
+        )}
     </MapContainer>
   );
 }
