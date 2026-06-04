@@ -1,26 +1,44 @@
 import { useEffect, useState, useRef } from "react";
 import api from "../services/api";
+import MapView from "../components/MapView";
+import StatCard from "../components/StatCard";
 import { io } from "socket.io-client";
+import { motion } from "framer-motion";
+import toast from "react-hot-toast";
+import {
+  Ambulance,
+  MapPinned,
+  CheckCircle,
+} from "lucide-react";
 
 export default function DriverDashboard() {
   const [emergencies, setEmergencies] = useState([]);
   const [tracking, setTracking] = useState(false);
   const [watchId, setWatchId] = useState(null);
 
+  const [driverLocation, setDriverLocation] =
+    useState(null);
+
   const socketRef = useRef(null);
 
   // ================= SOCKET =================
   useEffect(() => {
-    socketRef.current = io("https://ambitrack-backend.onrender.com", {
-      transports: ["polling", "websocket"],
-      reconnection: true,
-      reconnectionAttempts: Infinity,
-      reconnectionDelay: 1000,
-      timeout: 20000,
-    });
+    socketRef.current = io(
+      "https://ambitrack-backend.onrender.com",
+      {
+        transports: ["websocket", "polling"],
+        reconnection: true,
+        reconnectionAttempts: Infinity,
+        reconnectionDelay: 1000,
+        timeout: 20000,
+      }
+    );
 
     socketRef.current.on("connect", () => {
-      console.log("🚑 Driver socket connected:", socketRef.current.id);
+      console.log(
+        "🚑 Driver socket connected:",
+        socketRef.current.id
+      );
     });
 
     return () => {
@@ -28,22 +46,39 @@ export default function DriverDashboard() {
     };
   }, []);
 
-  // ================= FETCH EMERGENCIES =================
+  // ================= FETCH =================
   useEffect(() => {
     fetchEmergencies();
+
+    const timer = setInterval(() => {
+      fetchEmergencies();
+    }, 5000);
+
+    return () => clearInterval(timer);
   }, []);
 
   const fetchEmergencies = async () => {
     try {
-      const response = await api.get("/emergency/all");
-      setEmergencies(response.data.emergencies);
+      const response = await api.get(
+        "/emergency/all"
+      );
+
+      setEmergencies(
+        response.data?.emergencies || []
+      );
     } catch (error) {
-      console.error("Fetch emergencies failed:", error);
+      console.error(
+        "Fetch emergencies failed:",
+        error
+      );
     }
   };
 
   // ================= STATUS UPDATE =================
-  const updateStatus = async (emergencyId, status) => {
+  const updateStatus = async (
+    emergencyId,
+    status
+  ) => {
     try {
       await api.put("/status/update", {
         emergencyId,
@@ -52,14 +87,26 @@ export default function DriverDashboard() {
 
       fetchEmergencies();
 
-      socketRef.current?.emit("status-update", {
-        emergencyId,
-        status,
-      });
+      socketRef.current?.emit(
+        "status-update",
+        {
+          emergencyId,
+          status,
+        }
+      );
 
-      console.log("Status updated:", status);
+      toast.success(
+        `Status updated to ${status}`
+      );
     } catch (error) {
-      console.error("Status update failed:", error);
+      console.error(
+        "Status update failed:",
+        error
+      );
+
+      toast.error(
+        "Failed to update status"
+      );
     }
   };
 
@@ -69,171 +116,477 @@ export default function DriverDashboard() {
 
     setTracking(true);
 
-    const id = navigator.geolocation.watchPosition(
-      (position) => {
-        const payload = {
-          driverId: "D1",
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-        };
+    const id =
+      navigator.geolocation.watchPosition(
+        (position) => {
+          const payload = {
+            driverId: "D1",
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          };
 
-        // ✅ REQUIRED DEBUG LOG
-        console.log("📍 Sending driver location:", payload);
+          setDriverLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          });
 
-        // ✅ SOCKET EMIT (THIS IS THE IMPORTANT FIX YOU ASKED FOR)
-        socketRef.current.emit("driver-location", payload);
-      },
+          console.log(
+            "📍 Sending driver location:",
+            payload
+          );
 
-      (err) => {
-        console.error("GPS Error:", err);
+          socketRef.current.emit(
+            "driver-location",
+            payload
+          );
+        },
 
-        if (err.code === 1) alert("Location permission denied");
-        if (err.code === 2) alert("Location unavailable");
-        if (err.code === 3) console.warn("GPS timeout - retrying...");
-      },
+        (err) => {
+          console.error(
+            "GPS Error:",
+            err
+          );
 
-      {
-        enableHighAccuracy: true,
-        timeout: 15000,
-        maximumAge: 0,
-      }
-    );
+          if (err.code === 1) {
+            toast.error(
+              "Location permission denied"
+            );
+          }
+
+          if (err.code === 2) {
+            toast.error(
+              "Location unavailable"
+            );
+          }
+
+          if (err.code === 3) {
+            toast.error(
+              "GPS timeout"
+            );
+          }
+        },
+
+        {
+          enableHighAccuracy: true,
+          timeout: 15000,
+          maximumAge: 0,
+        }
+      );
 
     setWatchId(id);
+
+    toast.success(
+      "GPS Tracking Started"
+    );
   };
 
   // ================= STOP TRACKING =================
   const stopTracking = () => {
     if (watchId !== null) {
-      navigator.geolocation.clearWatch(watchId);
+      navigator.geolocation.clearWatch(
+        watchId
+      );
     }
 
     setWatchId(null);
     setTracking(false);
 
-    console.log("🛑 Tracking stopped");
+    toast.success(
+      "GPS Tracking Stopped"
+    );
   };
 
+  // ================= STATS =================
+  const activeCount =
+    emergencies.filter(
+      (e) =>
+        e.status === "assigned" ||
+        e.status === "on_the_way"
+    ).length;
+
+  const completedCount =
+    emergencies.filter(
+      (e) => e.status === "completed"
+    ).length;
+
   return (
-    <div style={container}>
-      <h1>🚑 Driver Dashboard</h1>
+    <motion.div
+      initial={{
+        opacity: 0,
+        y: 25,
+      }}
+      animate={{
+        opacity: 1,
+        y: 0,
+      }}
+      transition={{
+        duration: 0.5,
+      }}
+      style={container}
+    >
+      {/* HEADER */}
+      <div
+        style={{
+          textAlign: "center",
+          marginBottom: "25px",
+        }}
+      >
+        <h1
+          style={{
+            fontSize: "2.5rem",
+            color: "#0F172A",
+          }}
+        >
+          🚑 Driver Dashboard
+        </h1>
+
+        <p
+          style={{
+            color: "#64748B",
+          }}
+        >
+          Manage emergency requests and
+          share live ambulance location.
+        </p>
+      </div>
+
+      {/* STATS */}
+      <div style={statsGrid}>
+        <StatCard
+          icon={
+            <Ambulance size={30} />
+          }
+          title="Active Cases"
+          value={activeCount}
+        />
+
+        <StatCard
+          icon={
+            <MapPinned size={30} />
+          }
+          title="GPS Status"
+          value={
+            tracking ? "ON" : "OFF"
+          }
+        />
+
+        <StatCard
+          icon={
+            <CheckCircle size={30} />
+          }
+          title="Completed"
+          value={completedCount}
+        />
+      </div>
+
+      {/* DRIVER INFO */}
+      <div style={card}>
+        <h2>
+          🚑 Driver Information
+        </h2>
+
+        <p>
+          <strong>Driver ID:</strong>{" "}
+          D1
+        </p>
+
+        <p>
+          <strong>Status:</strong>{" "}
+          {tracking
+            ? "🟢 Online"
+            : "🔴 Offline"}
+        </p>
+      </div>
 
       {/* GPS CONTROL */}
       <div style={card}>
-        <h3>📍 Live Tracking Control</h3>
+        <h2>
+          📍 Live Tracking Control
+        </h2>
 
         {!tracking ? (
-          <button onClick={startTracking} style={startBtn}>
+          <button
+            onClick={
+              startTracking
+            }
+            style={startBtn}
+          >
             Start GPS Tracking
           </button>
         ) : (
-          <button onClick={stopTracking} style={stopBtn}>
+          <button
+            onClick={
+              stopTracking
+            }
+            style={stopBtn}
+          >
             Stop Tracking
           </button>
         )}
       </div>
 
+      {/* MAP */}
+      {driverLocation &&
+        emergencies.length > 0 && (
+          <div style={card}>
+            <h2>
+              🗺️ Live Navigation Map
+            </h2>
+
+            <MapView
+              patientLat={
+                emergencies[0]
+                  ?.latitude
+              }
+              patientLng={
+                emergencies[0]
+                  ?.longitude
+              }
+              ambulanceLat={
+                driverLocation.lat
+              }
+              ambulanceLng={
+                driverLocation.lng
+              }
+            />
+          </div>
+        )}
+
       {/* EMERGENCIES */}
       {emergencies.length === 0 ? (
-        <p>No emergencies found.</p>
+        <div style={card}>
+          <p>
+            No emergencies found.
+          </p>
+        </div>
       ) : (
-        emergencies.map((emergency) => (
-          <div key={emergency.id} style={card}>
-            <h3>👤 {emergency.patientName}</h3>
+        emergencies.map(
+          (emergency) => (
+            <motion.div
+              key={
+                emergency.id
+              }
+              style={card}
+              whileHover={{
+                scale: 1.01,
+              }}
+            >
+              <h2>
+                🚨 Emergency Request
+              </h2>
 
-            <p><b>Phone:</b> {emergency.phone}</p>
-            <p><b>Type:</b> {emergency.emergencyType}</p>
+              <p>
+                <strong>
+                  Patient:
+                </strong>{" "}
+                {
+                  emergency.patientName
+                }
+              </p>
 
-            <p>
-              <b>Status:</b>{" "}
-              <span style={statusStyle(emergency.status)}>
-                {emergency.status}
-              </span>
-            </p>
+              <p>
+                <strong>
+                  Phone:
+                </strong>{" "}
+                {
+                  emergency.phone
+                }
+              </p>
 
-            <div style={{ marginTop: "10px" }}>
-              <button onClick={() => updateStatus(emergency.id, "assigned")} style={btn}>
-                Accept
-              </button>
+              <p>
+                <strong>
+                  Type:
+                </strong>{" "}
+                {
+                  emergency.emergencyType
+                }
+              </p>
 
-              <button onClick={() => updateStatus(emergency.id, "on_the_way")} style={btn}>
-                On The Way
-              </button>
+              <p>
+                <strong>
+                  Status:
+                </strong>{" "}
+                <span
+                  style={statusStyle(
+                    emergency.status
+                  )}
+                >
+                  {
+                    emergency.status
+                  }
+                </span>
+              </p>
 
-              <button onClick={() => updateStatus(emergency.id, "arrived")} style={btn}>
-                Arrived
-              </button>
-
-              <button
-                onClick={() => updateStatus(emergency.id, "completed")}
-                style={{ ...btn, background: "green" }}
+              <div
+                style={
+                  buttonRow
+                }
               >
-                Complete
-              </button>
-            </div>
-          </div>
-        ))
+                <button
+                  style={
+                    assignedBtn
+                  }
+                  onClick={() =>
+                    updateStatus(
+                      emergency.id,
+                      "assigned"
+                    )
+                  }
+                >
+                  Accept
+                </button>
+
+                <button
+                  style={
+                    wayBtn
+                  }
+                  onClick={() =>
+                    updateStatus(
+                      emergency.id,
+                      "on_the_way"
+                    )
+                  }
+                >
+                  On The Way
+                </button>
+
+                <button
+                  style={
+                    arrivedBtn
+                  }
+                  onClick={() =>
+                    updateStatus(
+                      emergency.id,
+                      "arrived"
+                    )
+                  }
+                >
+                  Arrived
+                </button>
+
+                <button
+                  style={
+                    completedBtn
+                  }
+                  onClick={() =>
+                    updateStatus(
+                      emergency.id,
+                      "completed"
+                    )
+                  }
+                >
+                  Complete
+                </button>
+              </div>
+            </motion.div>
+          )
+        )
       )}
-    </div>
+    </motion.div>
   );
 }
 
-/* ---------------- UI STYLES ---------------- */
+/* ================= STYLES ================= */
 
 const container = {
-  maxWidth: "1000px",
+  maxWidth: "1100px",
   margin: "30px auto",
   padding: "20px",
 };
 
-const card = {
-  border: "1px solid #ddd",
-  borderRadius: "10px",
-  padding: "15px",
-  marginBottom: "15px",
-  background: "#fff",
+const statsGrid = {
+  display: "grid",
+  gridTemplateColumns:
+    "repeat(auto-fit,minmax(220px,1fr))",
+  gap: "20px",
+  marginBottom: "20px",
 };
 
-const btn = {
-  marginRight: "10px",
-  padding: "8px 12px",
-  border: "none",
-  borderRadius: "5px",
-  cursor: "pointer",
-  background: "#E53935",
-  color: "white",
+const card = {
+  background: "#fff",
+  borderRadius: "20px",
+  padding: "24px",
+  marginBottom: "20px",
+  boxShadow:
+    "0 10px 25px rgba(0,0,0,0.08)",
+};
+
+const buttonRow = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: "10px",
+  marginTop: "15px",
 };
 
 const startBtn = {
-  padding: "10px 15px",
-  background: "green",
-  color: "white",
+  padding: "14px 22px",
+  background: "#10B981",
+  color: "#fff",
   border: "none",
-  borderRadius: "8px",
+  borderRadius: "10px",
   cursor: "pointer",
+  fontWeight: "600",
 };
 
 const stopBtn = {
-  padding: "10px 15px",
-  background: "black",
-  color: "white",
+  padding: "14px 22px",
+  background: "#EF4444",
+  color: "#fff",
   border: "none",
-  borderRadius: "8px",
+  borderRadius: "10px",
+  cursor: "pointer",
+  fontWeight: "600",
+};
+
+const assignedBtn = {
+  padding: "10px 14px",
+  border: "none",
+  borderRadius: "10px",
+  background: "#2563EB",
+  color: "#fff",
+  cursor: "pointer",
+};
+
+const wayBtn = {
+  padding: "10px 14px",
+  border: "none",
+  borderRadius: "10px",
+  background: "#9333EA",
+  color: "#fff",
+  cursor: "pointer",
+};
+
+const arrivedBtn = {
+  padding: "10px 14px",
+  border: "none",
+  borderRadius: "10px",
+  background: "#F59E0B",
+  color: "#fff",
+  cursor: "pointer",
+};
+
+const completedBtn = {
+  padding: "10px 14px",
+  border: "none",
+  borderRadius: "10px",
+  background: "#10B981",
+  color: "#fff",
   cursor: "pointer",
 };
 
 const statusStyle = (status) => ({
-  padding: "5px 10px",
+  padding: "6px 12px",
   borderRadius: "20px",
-  color: "white",
+  color: "#fff",
+  fontWeight: "600",
   background:
     status === "pending"
-      ? "orange"
+      ? "#F59E0B"
       : status === "assigned"
-      ? "blue"
+      ? "#2563EB"
       : status === "on_the_way"
-      ? "purple"
+      ? "#9333EA"
       : status === "arrived"
-      ? "green"
-      : "darkgreen",
+      ? "#10B981"
+      : "#059669",
 });
