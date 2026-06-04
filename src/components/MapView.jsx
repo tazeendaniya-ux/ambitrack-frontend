@@ -4,9 +4,11 @@ import {
   Marker,
   Popup,
   Polyline,
+  useMap,
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
+import { useEffect } from "react";
 
 delete L.Icon.Default.prototype._getIconUrl;
 
@@ -19,26 +21,62 @@ L.Icon.Default.mergeOptions({
     "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
 });
 
+// 🚀 AUTO-FIT MAP TO BOTH MARKERS
+function RecenterMap({
+  patientLat,
+  patientLng,
+  ambulanceLat,
+  ambulanceLng,
+}) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (
+      patientLat == null ||
+      patientLng == null ||
+      ambulanceLat == null ||
+      ambulanceLng == null
+    ) {
+      return;
+    }
+
+    const bounds = [
+      [patientLat, patientLng],
+      [ambulanceLat, ambulanceLng],
+    ];
+
+    map.fitBounds(bounds, {
+      padding: [60, 60],
+    });
+  }, [
+    patientLat,
+    patientLng,
+    ambulanceLat,
+    ambulanceLng,
+    map,
+  ]);
+
+  return null;
+}
+
 export default function MapView({
   patientLat,
   patientLng,
   ambulanceLat,
   ambulanceLng,
 }) {
-  const centerLat = patientLat ?? 20.5937;
-  const centerLng = patientLng ?? 78.9629;
-
   const hasPatient =
-    patientLat !== null &&
-    patientLat !== undefined &&
-    patientLng !== null &&
-    patientLng !== undefined;
+    patientLat != null &&
+    patientLng != null;
 
   const hasAmbulance =
-    ambulanceLat !== null &&
-    ambulanceLat !== undefined &&
-    ambulanceLng !== null &&
-    ambulanceLng !== undefined;
+    ambulanceLat != null &&
+    ambulanceLng != null;
+
+  const centerLat =
+    patientLat ?? 20.5937;
+  const centerLng =
+    patientLng ?? 78.9629;
 
   return (
     <MapContainer
@@ -55,47 +93,37 @@ export default function MapView({
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
 
+      {/* 🚀 AUTO ZOOM CONTROLLER */}
+      <RecenterMap
+        patientLat={patientLat}
+        patientLng={patientLng}
+        ambulanceLat={ambulanceLat}
+        ambulanceLng={ambulanceLng}
+      />
+
+      {/* 🚨 PATIENT MARKER */}
       {hasPatient && (
-        <Marker
-          position={[
-            patientLat,
-            patientLng,
-          ]}
-        >
-          <Popup>
-            🚨 Patient Location
-          </Popup>
+        <Marker position={[patientLat, patientLng]}>
+          <Popup>🚨 Patient Location</Popup>
         </Marker>
       )}
 
+      {/* 🚑 AMBULANCE MARKER */}
       {hasAmbulance && (
-        <Marker
-          position={[
-            ambulanceLat,
-            ambulanceLng,
-          ]}
-        >
-          <Popup>
-            🚑 Ambulance Location
-          </Popup>
+        <Marker position={[ambulanceLat, ambulanceLng]}>
+          <Popup>🚑 Ambulance Location</Popup>
         </Marker>
       )}
 
-      {hasPatient &&
-        hasAmbulance && (
-          <Polyline
-            positions={[
-              [
-                ambulanceLat,
-                ambulanceLng,
-              ],
-              [
-                patientLat,
-                patientLng,
-              ],
-            ]}
-          />
-        )}
+      {/* 🛣️ ROUTE LINE */}
+      {hasPatient && hasAmbulance && (
+        <Polyline
+          positions={[
+            [ambulanceLat, ambulanceLng],
+            [patientLat, patientLng],
+          ]}
+        />
+      )}
     </MapContainer>
   );
 }
