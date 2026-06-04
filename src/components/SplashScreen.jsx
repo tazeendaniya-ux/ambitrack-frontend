@@ -5,35 +5,61 @@ export default function SplashScreen() {
     <div
       style={{
         height: "100vh",
+        background:
+          "linear-gradient(135deg, #EFF6FF, #FFFFFF)",
         display: "flex",
         flexDirection: "column",
         justifyContent: "center",
         alignItems: "center",
-        background: "#ffffff",
       }}
     >
-      {/* Ambulance */}
-      <motion.div
-        initial={{ x: -300, opacity: 0 }}
-        animate={{ x: 0, opacity: 1 }}
-        transition={{ duration: 1 }}
-        style={{ fontSize: "5rem" }}
-      >
-        🚑
-      </motion.div>
-
-      {/* Heartbeat */}
-      <motion.div
-        initial={{ scale: 0 }}
-        animate={{ scale: [1, 1.3, 1] }}
+      {/* Heartbeat Line */}
+      <motion.svg
+        width="350"
+        height="120"
+        viewBox="0 0 350 120"
+        initial={{ pathLength: 0 }}
+        animate={{ pathLength: 1 }}
         transition={{
-          delay: 1,
+          duration: 2,
+          ease: "easeInOut",
+        }}
+      >
+        <motion.path
+          d="
+          M10 60
+          L90 60
+          L120 60
+          L140 25
+          L160 95
+          L180 20
+          L200 60
+          L340 60
+          "
+          fill="transparent"
+          stroke="#2563EB"
+          strokeWidth="6"
+          strokeLinecap="round"
+          initial={{ pathLength: 0 }}
+          animate={{ pathLength: 1 }}
+          transition={{
+            duration: 2,
+          }}
+        />
+      </motion.svg>
+
+      {/* Heart */}
+      <motion.div
+        animate={{
+          scale: [1, 1.25, 1],
+        }}
+        transition={{
           duration: 1,
-          repeat: 2,
+          repeat: Infinity,
         }}
         style={{
-          fontSize: "4rem",
-          marginTop: "20px",
+          fontSize: "3rem",
+          marginTop: "-25px",
         }}
       >
         ❤️
@@ -41,20 +67,42 @@ export default function SplashScreen() {
 
       {/* Logo */}
       <motion.h1
+        initial={{
+          opacity: 0,
+          y: 20,
+        }}
+        animate={{
+          opacity: 1,
+          y: 0,
+        }}
+        transition={{
+          delay: 1.5,
+          duration: 0.8,
+        }}
+        style={{
+          marginTop: "25px",
+          fontSize: "3.5rem",
+          fontWeight: "800",
+          color: "#0F172A",
+          letterSpacing: "2px",
+        }}
+      >
+        AMBITRACK
+      </motion.h1>
+
+      <motion.p
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{
-          delay: 2.5,
-          duration: 1,
+          delay: 2,
         }}
         style={{
-          marginTop: "20px",
-          fontSize: "3rem",
-          color: "#2563EB",
+          color: "#64748B",
+          fontSize: "1.1rem",
         }}
       >
-        AmbiTrack
-      </motion.h1>
+        Smart Emergency Response Platform
+      </motion.p>
     </div>
   );
 }
