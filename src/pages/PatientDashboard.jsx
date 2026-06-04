@@ -1,3 +1,5 @@
+import StatCard from "../components/StatCard";
+import { Ambulance, Clock3, MapPinned } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import api from "../services/api";
 import MapView from "../components/MapView";
@@ -9,6 +11,7 @@ export default function PatientDashboard() {
   const [patientName, setPatientName] = useState("");
   const [phone, setPhone] = useState("");
   const [emergencyType, setEmergencyType] = useState("");
+
   const [latestEmergency, setLatestEmergency] = useState(null);
 
   const [ambulanceLocation, setAmbulanceLocation] = useState({
@@ -20,26 +23,35 @@ export default function PatientDashboard() {
 
   // ================= SOCKET =================
   useEffect(() => {
-    socketRef.current = io("https://ambitrack-backend.onrender.com", {
-      transports: ["polling"],
-      reconnection: true,
-    });
+    socketRef.current = io(
+      "https://ambitrack-backend.onrender.com",
+      {
+        transports: ["websocket", "polling"],
+        reconnection: true,
+      }
+    );
 
     socketRef.current.on("connect", () => {
       console.log("✅ Socket Connected");
     });
 
     socketRef.current.on("ambulance-update", (data) => {
-      console.log("🚑 SOCKET DATA:", data);
+      console.log("🚑 Ambulance Update:", data);
 
       if (!data) return;
 
-      const driver = data["D1"];
+      const driver =
+        data?.D1 ||
+        Object.values(data)[0];
 
-      if (driver?.lat && driver?.lng) {
+      if (
+        driver &&
+        driver.lat !== undefined &&
+        driver.lng !== undefined
+      ) {
         setAmbulanceLocation({
-          lat: driver.lat,
-          lng: driver.lng,
+          lat: Number(driver.lat),
+          lng: Number(driver.lng),
         });
       }
     });
@@ -55,6 +67,11 @@ export default function PatientDashboard() {
 
   // ================= SOS =================
   const handleSOS = () => {
+    if (!patientName || !phone || !emergencyType) {
+      toast.error("Please fill all fields");
+      return;
+    }
+
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         try {
@@ -78,7 +95,9 @@ export default function PatientDashboard() {
           toast.error("Failed to send request");
         }
       },
-      () => toast.error("Location access denied"),
+      () => {
+        toast.error("Location access denied");
+      },
       {
         enableHighAccuracy: true,
         timeout: 15000,
@@ -91,17 +110,21 @@ export default function PatientDashboard() {
     try {
       const res = await api.get("/emergency/all");
 
-      console.log("Emergency Data:", res.data);
+      const emergencies = res.data?.emergencies || [];
 
-      const all = res.data.emergencies;
+      if (emergencies.length > 0) {
+        const latest = emergencies[0];
 
-      if (all?.length) {
-        setLatestEmergency(all[0]);
+        setLatestEmergency(latest);
 
-        if (!ambulanceLocation) {
+        // fallback position if no driver connected
+        if (
+          !ambulanceLocation ||
+          !ambulanceLocation.lat
+        ) {
           setAmbulanceLocation({
-            lat: all[0].latitude + 0.01,
-            lng: all[0].longitude + 0.01,
+            lat: latest.latitude + 0.01,
+            lng: latest.longitude + 0.01,
           });
         }
       }
@@ -123,58 +146,83 @@ export default function PatientDashboard() {
 
   // ================= DEMO MOVEMENT =================
   useEffect(() => {
-    const moveAmbulance = setInterval(() => {
+    const interval = setInterval(() => {
+      if (!latestEmergency) return;
+
       setAmbulanceLocation((prev) => {
-        if (!prev || !latestEmergency) return prev;
+        const step = 0.0005;
 
-        const newLat =
+        const lat =
           prev.lat > latestEmergency.latitude
-            ? prev.lat - 0.0005
-            : prev.lat + 0.0005;
+            ? prev.lat - step
+            : prev.lat + step;
 
-        const newLng =
+        const lng =
           prev.lng > latestEmergency.longitude
-            ? prev.lng - 0.0005
-            : prev.lng + 0.0005;
+            ? prev.lng - step
+            : prev.lng + step;
 
-        return {
-          lat: newLat,
-          lng: newLng,
-        };
+        return { lat, lng };
       });
     }, 5000);
 
-    return () => clearInterval(moveAmbulance);
+    return () => clearInterval(interval);
   }, [latestEmergency]);
 
   // ================= DISTANCE =================
-  const getDistance = (lat1, lon1, lat2, lon2) => {
-    if (!lat2 || !lon2) return 0;
+  const getDistance = (
+    lat1,
+    lon1,
+    lat2,
+    lon2
+  ) => {
+    if (
+      lat1 == null ||
+      lon1 == null ||
+      lat2 == null ||
+      lon2 == null
+    )
+      return 0;
 
     const R = 6371;
 
-    const dLat = ((lat2 - lat1) * Math.PI) / 180;
-    const dLon = ((lon2 - lon1) * Math.PI) / 180;
+    const dLat =
+      ((lat2 - lat1) * Math.PI) / 180;
+
+    const dLon =
+      ((lon2 - lon1) * Math.PI) / 180;
 
     const a =
-      Math.sin(dLat / 2) ** 2 +
+      Math.sin(dLat / 2) *
+        Math.sin(dLat / 2) +
       Math.cos((lat1 * Math.PI) / 180) *
         Math.cos((lat2 * Math.PI) / 180) *
-        Math.sin(dLon / 2) ** 2;
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
 
-    return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+    const c =
+      2 *
+      Math.atan2(
+        Math.sqrt(a),
+        Math.sqrt(1 - a)
+      );
+
+    return R * c;
   };
 
   const getETA = (distance) => {
-    if (!distance) return 0;
-
     const averageSpeed = 40;
 
-    return (distance / averageSpeed) * 60;
+    if (distance <= 0) return 0;
+
+    return Math.ceil(
+      (distance / averageSpeed) * 60
+    );
   };
 
   const distance =
-    latestEmergency && ambulanceLocation
+    latestEmergency &&
+    ambulanceLocation
       ? getDistance(
           latestEmergency.latitude,
           latestEmergency.longitude,
@@ -207,112 +255,129 @@ export default function PatientDashboard() {
           style={{
             fontSize: "2.8rem",
             color: "#0F172A",
-            marginBottom: "10px",
           }}
         >
           🚑 Patient Emergency Center
         </h1>
 
-        <p
-          style={{
-            color: "#64748B",
-            fontSize: "1rem",
-          }}
-        >
-          Request emergency assistance and track your ambulance in real time.
+        <p style={{ color: "#64748B" }}>
+          Request emergency assistance and
+          track your ambulance in real time.
         </p>
       </div>
 
-      {/* STATS */}
-      {latestEmergency && (
-        <div style={statsGrid}>
-          <div style={statCard}>
-            <h3>🚨 Status</h3>
-            <p style={statValue}>{latestEmergency.status}</p>
-          </div>
-
-          <div style={statCard}>
-            <h3>📍 Distance</h3>
-            <p style={statValue}>{distance.toFixed(2)} km</p>
-          </div>
-
-          <div style={statCard}>
-            <h3>⏳ ETA</h3>
-            <p style={statValue}>{eta.toFixed(0)} min</p>
-          </div>
-        </div>
-      )}
-
       {/* SOS FORM */}
       <div style={cardStyle}>
-        <h2 style={{ marginBottom: "20px" }}>
-          🚨 Request Emergency Ambulance
-        </h2>
+        <h2>🚨 Request Emergency Ambulance</h2>
 
         <input
+          style={inputStyle}
           placeholder="Patient Name"
           value={patientName}
-          onChange={(e) => setPatientName(e.target.value)}
-          style={inputStyle}
+          onChange={(e) =>
+            setPatientName(e.target.value)
+          }
         />
 
         <input
+          style={inputStyle}
           placeholder="Phone Number"
           value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-          style={inputStyle}
+          onChange={(e) =>
+            setPhone(e.target.value)
+          }
         />
 
         <input
+          style={inputStyle}
           placeholder="Emergency Type"
           value={emergencyType}
-          onChange={(e) => setEmergencyType(e.target.value)}
-          style={inputStyle}
+          onChange={(e) =>
+            setEmergencyType(e.target.value)
+          }
         />
 
-        <button onClick={handleSOS} style={sosBtn}>
-          🚨 Request Ambulance
+        <button
+          style={sosBtn}
+          onClick={handleSOS}
+        >
+          SEND SOS
         </button>
       </div>
 
-      {/* STATUS */}
       {latestEmergency && (
-        <div style={cardStyle}>
-          <h2>🚑 Live Tracking Status</h2>
+        <>
+          <div style={statsGrid}>
+            <StatCard
+              icon={<Ambulance size={32} />}
+              title="Emergency Status"
+              value={latestEmergency.status}
+            />
 
-          <p>
-            <strong>Driver Location:</strong>{" "}
-            {ambulanceLocation
-              ? `${ambulanceLocation.lat.toFixed(
-                  6
-                )}, ${ambulanceLocation.lng.toFixed(6)}`
-              : "Not Connected"}
-          </p>
+            <StatCard
+              icon={<MapPinned size={32} />}
+              title="Distance"
+              value={`${distance.toFixed(
+                2
+              )} km`}
+            />
 
-          <p>
-            <strong>Distance:</strong> {distance.toFixed(2)} km
-          </p>
+            <StatCard
+              icon={<Clock3 size={32} />}
+              title="ETA"
+              value={`${eta} min`}
+            />
+          </div>
 
-          <p>
-            <strong>ETA:</strong> {eta.toFixed(0)} minutes
-          </p>
-        </div>
-      )}
+          <div style={cardStyle}>
+            <h2>🚑 Live Tracking Status</h2>
 
-      {/* MAP */}
-      {latestEmergency && (
-        <div style={cardStyle}>
-          <h2 style={{ marginBottom: "20px" }}>
-            🗺️ Live Ambulance Map
-          </h2>
+            <p>
+              <strong>Driver Location:</strong>{" "}
+              {ambulanceLocation.lat.toFixed(
+                6
+              )}
+              ,{" "}
+              {ambulanceLocation.lng.toFixed(
+                6
+              )}
+            </p>
 
-          <MapView
-            patientLat={latestEmergency.latitude}
-            patientLng={latestEmergency.longitude}
-            ambulanceLat={ambulanceLocation?.lat}
-            ambulanceLng={ambulanceLocation?.lng}
-          />
-        </div>
+            <p>
+              <strong>Distance:</strong>{" "}
+              {distance.toFixed(2)} km
+            </p>
+
+            <p>
+              <strong>ETA:</strong> {eta} min
+            </p>
+          </div>
+
+          <div style={cardStyle}>
+            <h2
+              style={{
+                marginBottom: "20px",
+              }}
+            >
+              🗺️ Live Ambulance Map
+            </h2>
+
+            <MapView
+              patientLat={
+                latestEmergency.latitude
+              }
+              patientLng={
+                latestEmergency.longitude
+              }
+              ambulanceLat={
+                ambulanceLocation.lat
+              }
+              ambulanceLng={
+                ambulanceLocation.lng
+              }
+            />
+          </div>
+        </>
       )}
     </motion.div>
   );
@@ -320,23 +385,10 @@ export default function PatientDashboard() {
 
 const statsGrid = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+  gridTemplateColumns:
+    "repeat(auto-fit,minmax(220px,1fr))",
   gap: "20px",
-  marginBottom: "20px",
-};
-
-const statCard = {
-  background: "#fff",
-  borderRadius: "18px",
-  padding: "20px",
-  textAlign: "center",
-  boxShadow: "0 10px 25px rgba(0,0,0,0.08)",
-};
-
-const statValue = {
-  fontSize: "1.4rem",
-  fontWeight: "700",
-  marginTop: "10px",
+  marginTop: "20px",
 };
 
 const cardStyle = {
@@ -344,7 +396,8 @@ const cardStyle = {
   marginTop: "20px",
   background: "#fff",
   borderRadius: "20px",
-  boxShadow: "0 10px 25px rgba(0,0,0,0.08)",
+  boxShadow:
+    "0 10px 25px rgba(0,0,0,0.08)",
 };
 
 const inputStyle = {
@@ -359,11 +412,12 @@ const inputStyle = {
 const sosBtn = {
   width: "100%",
   padding: "16px",
-  background: "linear-gradient(135deg,#EF4444,#DC2626)",
-  color: "white",
+  background:
+    "linear-gradient(135deg,#EF4444,#DC2626)",
+  color: "#fff",
   border: "none",
   borderRadius: "12px",
-  cursor: "pointer",
-  fontWeight: "700",
   fontSize: "18px",
+  fontWeight: "700",
+  cursor: "pointer",
 };
