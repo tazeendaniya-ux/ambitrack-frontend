@@ -117,7 +117,6 @@ export default function PatientDashboard() {
 
         setLatestEmergency(latest);
 
-        // fallback position if no driver connected
         if (
           !ambulanceLocation ||
           !ambulanceLocation.lat
@@ -244,7 +243,6 @@ export default function PatientDashboard() {
         padding: "0 20px",
       }}
     >
-      {/* HEADER */}
       <div
         style={{
           textAlign: "center",
@@ -266,7 +264,6 @@ export default function PatientDashboard() {
         </p>
       </div>
 
-      {/* SOS FORM */}
       <div style={cardStyle}>
         <h2>🚨 Request Emergency Ambulance</h2>
 
@@ -307,25 +304,23 @@ export default function PatientDashboard() {
 
       {latestEmergency && (
         <>
-          <div style={statsGrid}>
+          <div className="stats-grid">
             <StatCard
               icon={<Ambulance size={32} />}
-              title="Emergency Status"
+              title="Status"
               value={latestEmergency.status}
             />
 
             <StatCard
               icon={<MapPinned size={32} />}
               title="Distance"
-              value={`${distance.toFixed(
-                2
-              )} km`}
+              value={`${distance.toFixed(2)} km`}
             />
 
             <StatCard
               icon={<Clock3 size={32} />}
               title="ETA"
-              value={`${eta} min`}
+              value={`${eta.toFixed(0)} min`}
             />
           </div>
 
@@ -334,13 +329,9 @@ export default function PatientDashboard() {
 
             <p>
               <strong>Driver Location:</strong>{" "}
-              {ambulanceLocation.lat.toFixed(
-                6
-              )}
-              ,{" "}
-              {ambulanceLocation.lng.toFixed(
-                6
-              )}
+              {ambulanceLocation.lat.toFixed(6)},
+              {" "}
+              {ambulanceLocation.lng.toFixed(6)}
             </p>
 
             <p>
@@ -383,14 +374,6 @@ export default function PatientDashboard() {
   );
 }
 
-const statsGrid = {
-  display: "grid",
-  gridTemplateColumns:
-    "repeat(auto-fit,minmax(220px,1fr))",
-  gap: "20px",
-  marginTop: "20px",
-};
-
 const cardStyle = {
   padding: "24px",
   marginTop: "20px",
@@ -421,3 +404,4 @@ const sosBtn = {
   fontWeight: "700",
   cursor: "pointer",
 };
+

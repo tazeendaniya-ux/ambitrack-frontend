@@ -21,24 +21,17 @@ export default function SOSButton({ onClick }) {
         width: "220px",
         height: "220px",
         borderRadius: "50%",
-        border: "none",
-        cursor: "pointer",
-
         background:
-          "linear-gradient(135deg, #EF4444, #DC2626)",
-
+          "linear-gradient(135deg,#EF4444,#DC2626)",
         color: "#fff",
+        border: "none",
         fontSize: "42px",
         fontWeight: "800",
-
+        cursor: "pointer",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-
         margin: "30px auto",
-
-        boxShadow:
-          "0 15px 40px rgba(239,68,68,0.45)",
       }}
     >
       🚨 SOS
