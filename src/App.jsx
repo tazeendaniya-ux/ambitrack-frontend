@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 
@@ -12,8 +12,23 @@ import HospitalDashboard from "./pages/HospitalDashboard";
 
 // Components
 import Navbar from "./components/Navbar";
+import SplashScreen from "./components/SplashScreen";
 
 export default function App() {
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setLoading(false);
+    }, 4000); // Splash duration
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (loading) {
+    return <SplashScreen />;
+  }
+
   return (
     <BrowserRouter>
       {/* Toast Notifications */}
