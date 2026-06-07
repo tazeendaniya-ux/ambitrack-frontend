@@ -189,7 +189,7 @@ export default function MapView({
         setAnimatedPosition(
           routeCoords[index]
         );
-      }, 1200); // Increase to 1500 or 2000 for slower movement
+      }, 1000); // Increase to 1500 or 2000 for slower movement
 
     return () =>
       clearInterval(interval);
