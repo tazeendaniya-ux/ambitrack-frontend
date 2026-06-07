@@ -14,61 +14,99 @@ export default function HospitalDashboard() {
 
   // ================= SOCKET =================
   useEffect(() => {
-    socketRef.current = io("https://ambitrack-backend.onrender.com", {
-      transports: ["websocket", "polling"],
-    });
+    socketRef.current = io(
+      "https://ambitrack-backend.onrender.com",
+      {
+        transports: ["websocket", "polling"],
+      }
+    );
 
     socketRef.current.on("connect", () => {
       console.log("🏥 Hospital socket connected");
     });
 
-    // live driver tracking
-    socketRef.current.on("driver-location", (data) => {
-      setDriverLocations((prev) => ({
-        ...prev,
-        [data.driverId]: {
-          lat: data.lat,
-          lng: data.lng,
-        },
-      }));
-    });
+    socketRef.current.on(
+      "driver-location",
+      (data) => {
+        setDriverLocations((prev) => ({
+          ...prev,
+          [data.driverId]: {
+            lat: data.lat,
+            lng: data.lng,
+          },
+        }));
+      }
+    );
 
-    return () => socketRef.current?.disconnect();
+    return () => {
+      socketRef.current?.disconnect();
+    };
   }, []);
 
   // ================= FETCH EMERGENCIES =================
   useEffect(() => {
     fetchEmergencies();
-    const interval = setInterval(fetchEmergencies, 5000);
+
+    const interval = setInterval(
+      fetchEmergencies,
+      5000
+    );
+
     return () => clearInterval(interval);
   }, []);
 
   const fetchEmergencies = async () => {
     try {
       const res = await api.get("/emergency/all");
-      setEmergencies(res.data?.emergencies || []);
+
+      const priorityOrder = {
+        Critical: 1,
+        High: 2,
+        Medium: 3,
+        Low: 4,
+      };
+
+      const sortedEmergencies = (
+        res.data?.emergencies || []
+      ).sort(
+        (a, b) =>
+          (priorityOrder[a.priority] || 999) -
+          (priorityOrder[b.priority] || 999)
+      );
+
+      setEmergencies(sortedEmergencies);
     } catch (err) {
       console.error(err);
     }
   };
 
   // ================= ASSIGN AMBULANCE =================
-  const assignDriver = async (emergencyId) => {
+  const assignDriver = async (
+    emergencyId
+  ) => {
     try {
       await api.put("/status/update", {
         emergencyId,
         status: "assigned",
       });
 
-      socketRef.current?.emit("status-update", {
-        emergencyId,
-        status: "assigned",
-      });
+      socketRef.current?.emit(
+        "status-update",
+        {
+          emergencyId,
+          status: "assigned",
+        }
+      );
 
-      toast.success("Ambulance assigned");
+      toast.success(
+        "Ambulance assigned"
+      );
+
       fetchEmergencies();
     } catch (err) {
-      toast.error("Failed to assign driver");
+      toast.error(
+        "Failed to assign ambulance"
+      );
     }
   };
 
@@ -78,8 +116,14 @@ export default function HospitalDashboard() {
       animate={{ opacity: 1, y: 0 }}
       style={container}
     >
-      {/* HEADER */}
-      <h1 style={{ textAlign: "center" }}>🏥 Hospital Dashboard</h1>
+      <h1
+        style={{
+          textAlign: "center",
+          marginBottom: "20px",
+        }}
+      >
+        🏥 Hospital Dashboard
+      </h1>
 
       {/* MAP SECTION */}
       {selectedEmergency && (
@@ -87,41 +131,87 @@ export default function HospitalDashboard() {
           <h2>🗺️ Live Tracking</h2>
 
           <MapView
-            patientLat={selectedEmergency.latitude}
-            patientLng={selectedEmergency.longitude}
+            patientLat={
+              selectedEmergency.latitude
+            }
+            patientLng={
+              selectedEmergency.longitude
+            }
             ambulanceLat={
-              driverLocations[selectedEmergency.driverId]?.lat
+              driverLocations[
+                selectedEmergency.driverId
+              ]?.lat
             }
             ambulanceLng={
-              driverLocations[selectedEmergency.driverId]?.lng
+              driverLocations[
+                selectedEmergency.driverId
+              ]?.lng
             }
           />
         </div>
       )}
 
-      {/* EMERGENCIES LIST */}
+      {/* EMERGENCIES */}
       {emergencies.map((e) => (
         <div key={e.id} style={card}>
           <h2>🚨 {e.patientName}</h2>
 
           <p>📞 {e.phone}</p>
-          <p>🚑 Type: {e.emergencyType}</p>
-          <p>📌 Status: {e.status}</p>
+
           <p>
-            📍 {e.latitude}, {e.longitude}
+            🚑 Type: {e.emergencyType}
+          </p>
+
+          <p>
+            📌 Status: {e.status}
+          </p>
+
+          <p>
+            🚨 Priority:
+            <span
+              style={{
+                marginLeft: "8px",
+                padding: "5px 12px",
+                borderRadius: "20px",
+                color: "#fff",
+                fontWeight: "700",
+                background:
+                  e.priority ===
+                  "Critical"
+                    ? "#DC2626"
+                    : e.priority ===
+                      "High"
+                    ? "#EA580C"
+                    : e.priority ===
+                      "Medium"
+                    ? "#CA8A04"
+                    : "#16A34A",
+              }}
+            >
+              {e.priority || "Low"}
+            </span>
+          </p>
+
+          <p>
+            📍 {e.latitude},{" "}
+            {e.longitude}
           </p>
 
           <div style={btnRow}>
             <button
               style={viewBtn}
-              onClick={() => setSelectedEmergency(e)}
+              onClick={() =>
+                setSelectedEmergency(e)
+              }
             >
               View Map
             </button>
 
             <button
               style={assignBtn}
-              onClick={() => assignDriver(e.id)}
+              onClick={() =>
+                assignDriver(e.id)
+              }
             >
               Assign Ambulance
             </button>
@@ -145,7 +235,8 @@ const card = {
   padding: "20px",
   marginBottom: "15px",
   borderRadius: "15px",
-  boxShadow: "0 5px 15px rgba(0,0,0,0.1)",
+  boxShadow:
+    "0 5px 15px rgba(0,0,0,0.1)",
 };
 
 const btnRow = {
