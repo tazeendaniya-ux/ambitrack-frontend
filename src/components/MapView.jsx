@@ -68,6 +68,9 @@ export default function MapView({
   const [routeCoords, setRouteCoords] =
     useState([]);
 
+  const [animatedPosition, setAnimatedPosition] =
+    useState(null);
+
   const hasPatient =
     patientLat != null &&
     patientLng != null;
@@ -82,7 +85,7 @@ export default function MapView({
   const centerLng =
     patientLng ?? 78.9629;
 
-  // ================= REAL ROAD ROUTE =================
+  // ================= FETCH REAL ROUTE =================
   useEffect(() => {
     const fetchRoute = async () => {
       if (
@@ -152,6 +155,38 @@ export default function MapView({
     hasAmbulance,
   ]);
 
+  // ================= ANIMATE AMBULANCE =================
+  useEffect(() => {
+    if (routeCoords.length === 0)
+      return;
+
+    let index = 0;
+
+    setAnimatedPosition(
+      routeCoords[0]
+    );
+
+    const interval =
+      setInterval(() => {
+        if (
+          index >=
+          routeCoords.length - 1
+        ) {
+          clearInterval(interval);
+          return;
+        }
+
+        index++;
+
+        setAnimatedPosition(
+          routeCoords[index]
+        );
+      }, 100);
+
+    return () =>
+      clearInterval(interval);
+  }, [routeCoords]);
+
   return (
     <MapContainer
       center={[centerLat, centerLng]}
@@ -170,8 +205,16 @@ export default function MapView({
       <RecenterMap
         patientLat={patientLat}
         patientLng={patientLng}
-        ambulanceLat={ambulanceLat}
-        ambulanceLng={ambulanceLng}
+        ambulanceLat={
+          animatedPosition
+            ? animatedPosition[0]
+            : ambulanceLat
+        }
+        ambulanceLng={
+          animatedPosition
+            ? animatedPosition[1]
+            : ambulanceLng
+        }
       />
 
       {/* PATIENT */}
@@ -188,13 +231,16 @@ export default function MapView({
         </Marker>
       )}
 
-      {/* AMBULANCE */}
-      {hasAmbulance && (
+      {/* ANIMATED AMBULANCE */}
+      {(animatedPosition ||
+        hasAmbulance) && (
         <Marker
-          position={[
-            ambulanceLat,
-            ambulanceLng,
-          ]}
+          position={
+            animatedPosition || [
+              ambulanceLat,
+              ambulanceLng,
+            ]
+          }
         >
           <Popup>
             🚑 Ambulance Location
