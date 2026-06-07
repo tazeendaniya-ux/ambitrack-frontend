@@ -1,15 +1,48 @@
 import { useContext } from "react";
 import { UserContext } from "../context/UserContext";
+import {
+  useNavigate,
+  useLocation,
+} from "react-router-dom";
 
 export default function Navbar() {
-  const { user, role, logout } = useContext(UserContext);
+  const { user, role, logout } =
+    useContext(UserContext);
+
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const handleLogout = () => {
+    logout();
+
+    localStorage.removeItem("user");
+    localStorage.removeItem("role");
+
+    navigate("/");
+  };
 
   return (
     <nav style={styles.nav}>
-      <div style={styles.logo}>
-        🚑 <span>AmbiTrack</span>
+      {/* LEFT */}
+      <div style={styles.left}>
+        {location.pathname !== "/" && (
+          <button
+            style={styles.backBtn}
+            onClick={() => navigate(-1)}
+          >
+            ← Back
+          </button>
+        )}
+
+        <div
+          style={styles.logo}
+          onClick={() => navigate("/")}
+        >
+          🚑 <span>AmbiTrack</span>
+        </div>
       </div>
 
+      {/* RIGHT */}
       <div style={styles.right}>
         {user ? (
           <>
@@ -22,16 +55,23 @@ export default function Navbar() {
             </span>
 
             <button
-              onClick={logout}
+              onClick={handleLogout}
               style={styles.logout}
             >
               Logout
             </button>
           </>
         ) : (
-          <span style={styles.tagline}>
-            Smart Emergency Response
-          </span>
+          <>
+            <button
+              style={styles.loginBtn}
+              onClick={() =>
+                navigate("/login")
+              }
+            >
+              Login
+            </button>
+          </>
         )}
       </div>
     </nav>
@@ -53,7 +93,14 @@ const styles = {
     background: "#0F172A",
     color: "#fff",
 
-    boxShadow: "0 4px 20px rgba(0,0,0,0.15)",
+    boxShadow:
+      "0 4px 20px rgba(0,0,0,0.15)",
+  },
+
+  left: {
+    display: "flex",
+    alignItems: "center",
+    gap: "15px",
   },
 
   logo: {
@@ -63,6 +110,8 @@ const styles = {
 
     fontSize: "22px",
     fontWeight: "700",
+
+    cursor: "pointer",
 
     letterSpacing: "0.5px",
   },
@@ -89,9 +138,34 @@ const styles = {
     fontWeight: "500",
   },
 
-  tagline: {
-    color: "#CBD5E1",
-    fontSize: "14px",
+  backBtn: {
+    background: "#1E293B",
+    color: "#fff",
+
+    border: "none",
+
+    padding: "10px 14px",
+
+    borderRadius: "10px",
+
+    cursor: "pointer",
+
+    fontWeight: "600",
+  },
+
+  loginBtn: {
+    background: "#2563EB",
+    color: "#fff",
+
+    border: "none",
+
+    padding: "10px 16px",
+
+    borderRadius: "10px",
+
+    cursor: "pointer",
+
+    fontWeight: "600",
   },
 
   logout: {
@@ -107,7 +181,5 @@ const styles = {
     cursor: "pointer",
 
     fontWeight: "600",
-
-    transition: "0.3s",
   },
 };
