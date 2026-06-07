@@ -8,7 +8,8 @@ import {
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import polyline from "@mapbox/polyline";
 
 delete L.Icon.Default.prototype._getIconUrl;
 
@@ -21,7 +22,7 @@ L.Icon.Default.mergeOptions({
     "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
 });
 
-// 🚀 AUTO-FIT MAP TO BOTH MARKERS
+// ================= AUTO FIT =================
 function RecenterMap({
   patientLat,
   patientLng,
@@ -36,9 +37,8 @@ function RecenterMap({
       patientLng == null ||
       ambulanceLat == null ||
       ambulanceLng == null
-    ) {
+    )
       return;
-    }
 
     const bounds = [
       [patientLat, patientLng],
@@ -65,6 +65,9 @@ export default function MapView({
   ambulanceLat,
   ambulanceLng,
 }) {
+  const [routeCoords, setRouteCoords] =
+    useState([]);
+
   const hasPatient =
     patientLat != null &&
     patientLng != null;
@@ -75,8 +78,79 @@ export default function MapView({
 
   const centerLat =
     patientLat ?? 20.5937;
+
   const centerLng =
     patientLng ?? 78.9629;
+
+  // ================= REAL ROAD ROUTE =================
+  useEffect(() => {
+    const fetchRoute = async () => {
+      if (
+        !hasPatient ||
+        !hasAmbulance
+      )
+        return;
+
+      try {
+        const response = await fetch(
+          "https://api.openrouteservice.org/v2/directions/driving-car",
+          {
+            method: "POST",
+            headers: {
+              Authorization:
+                import.meta.env
+                  .VITE_ORS_API_KEY,
+              "Content-Type":
+                "application/json",
+            },
+            body: JSON.stringify({
+              coordinates: [
+                [
+                  ambulanceLng,
+                  ambulanceLat,
+                ],
+                [
+                  patientLng,
+                  patientLat,
+                ],
+              ],
+            }),
+          }
+        );
+
+        const data =
+          await response.json();
+
+        if (
+          !data.routes ||
+          !data.routes.length
+        )
+          return;
+
+        const encoded =
+          data.routes[0].geometry;
+
+        const decoded =
+          polyline.decode(encoded);
+
+        setRouteCoords(decoded);
+      } catch (err) {
+        console.error(
+          "Route fetch error:",
+          err
+        );
+      }
+    };
+
+    fetchRoute();
+  }, [
+    patientLat,
+    patientLng,
+    ambulanceLat,
+    ambulanceLng,
+    hasPatient,
+    hasAmbulance,
+  ]);
 
   return (
     <MapContainer
@@ -93,7 +167,6 @@ export default function MapView({
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
 
-      {/* 🚀 AUTO ZOOM CONTROLLER */}
       <RecenterMap
         patientLat={patientLat}
         patientLng={patientLng}
@@ -101,27 +174,42 @@ export default function MapView({
         ambulanceLng={ambulanceLng}
       />
 
-      {/* 🚨 PATIENT MARKER */}
+      {/* PATIENT */}
       {hasPatient && (
-        <Marker position={[patientLat, patientLng]}>
-          <Popup>🚨 Patient Location</Popup>
-        </Marker>
-      )}
-
-      {/* 🚑 AMBULANCE MARKER */}
-      {hasAmbulance && (
-        <Marker position={[ambulanceLat, ambulanceLng]}>
-          <Popup>🚑 Ambulance Location</Popup>
-        </Marker>
-      )}
-
-      {/* 🛣️ ROUTE LINE */}
-      {hasPatient && hasAmbulance && (
-        <Polyline
-          positions={[
-            [ambulanceLat, ambulanceLng],
-            [patientLat, patientLng],
+        <Marker
+          position={[
+            patientLat,
+            patientLng,
           ]}
+        >
+          <Popup>
+            🚨 Patient Location
+          </Popup>
+        </Marker>
+      )}
+
+      {/* AMBULANCE */}
+      {hasAmbulance && (
+        <Marker
+          position={[
+            ambulanceLat,
+            ambulanceLng,
+          ]}
+        >
+          <Popup>
+            🚑 Ambulance Location
+          </Popup>
+        </Marker>
+      )}
+
+      {/* REAL ROAD ROUTE */}
+      {routeCoords.length > 0 && (
+        <Polyline
+          positions={routeCoords}
+          pathOptions={{
+            color: "blue",
+            weight: 5,
+          }}
         />
       )}
     </MapContainer>
