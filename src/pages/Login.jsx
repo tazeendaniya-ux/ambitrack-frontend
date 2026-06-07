@@ -11,9 +11,14 @@ export default function Login() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleLogin = async (e) => {
     e.preventDefault();
+
+    if (loading) return;
+
+    setLoading(true);
 
     try {
       const response = await api.post("/auth/login", {
@@ -21,21 +26,22 @@ export default function Login() {
         password,
       });
 
-      console.log(response.data);
-
       const user = response.data.user;
 
       // Save user in context
       login(user);
 
-      // Optional localStorage backup
-      localStorage.setItem("user", JSON.stringify(user));
-      localStorage.setItem("role", user.role);
+      // Backup in localStorage
+      localStorage.setItem(
+        "user",
+        JSON.stringify(user)
+      );
+      localStorage.setItem(
+        "role",
+        user.role
+      );
 
-      // Professional notification
-      toast.success("Login Successful!");
-
-      // Redirect based on role
+      // Redirect immediately
       if (user.role === "patient") {
         navigate("/patient");
       } else if (user.role === "driver") {
@@ -44,15 +50,22 @@ export default function Login() {
         navigate("/hospital");
       }
 
+      // Show success message after navigation
+      setTimeout(() => {
+        toast.success("Login Successful!");
+      }, 100);
+
       setEmail("");
       setPassword("");
     } catch (error) {
       console.error(error);
 
       toast.error(
-        error.response?.data?.message ||
+        error?.response?.data?.message ||
           "Login Failed"
       );
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -64,7 +77,8 @@ export default function Login() {
         padding: "20px",
         background: "#fff",
         borderRadius: "10px",
-        boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
+        boxShadow:
+          "0 2px 10px rgba(0,0,0,0.1)",
       }}
     >
       <h1
@@ -81,7 +95,9 @@ export default function Login() {
           type="email"
           placeholder="Enter Email"
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={(e) =>
+            setEmail(e.target.value)
+          }
           style={inputStyle}
           required
         />
@@ -90,13 +106,27 @@ export default function Login() {
           type="password"
           placeholder="Enter Password"
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          onChange={(e) =>
+            setPassword(e.target.value)
+          }
           style={inputStyle}
           required
         />
 
-        <button type="submit" style={buttonStyle}>
-          Login
+        <button
+          type="submit"
+          style={{
+            ...buttonStyle,
+            opacity: loading ? 0.7 : 1,
+            cursor: loading
+              ? "not-allowed"
+              : "pointer",
+          }}
+          disabled={loading}
+        >
+          {loading
+            ? "Logging in..."
+            : "Login"}
         </button>
       </form>
     </div>
@@ -110,6 +140,7 @@ const inputStyle = {
   borderRadius: "8px",
   border: "1px solid #ccc",
   fontSize: "16px",
+  boxSizing: "border-box",
 };
 
 const buttonStyle = {
@@ -120,5 +151,4 @@ const buttonStyle = {
   border: "none",
   borderRadius: "8px",
   fontSize: "16px",
-  cursor: "pointer",
 };
