@@ -22,7 +22,7 @@ L.Icon.Default.mergeOptions({
     "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
 });
 
-// ================= AUTO FIT =================
+// ================= AUTO FIT MAP =================
 function RecenterMap({
   patientLat,
   patientLng,
@@ -37,8 +37,9 @@ function RecenterMap({
       patientLng == null ||
       ambulanceLat == null ||
       ambulanceLng == null
-    )
+    ) {
       return;
+    }
 
     const bounds = [
       [patientLat, patientLng],
@@ -65,19 +66,21 @@ export default function MapView({
   ambulanceLat,
   ambulanceLng,
 }) {
-  const [routeCoords, setRouteCoords] =
-    useState([]);
-
+  const [routeCoords, setRouteCoords] = useState([]);
   const [animatedPosition, setAnimatedPosition] =
     useState(null);
 
   const hasPatient =
-    patientLat != null &&
-    patientLng != null;
+    patientLat !== null &&
+    patientLat !== undefined &&
+    patientLng !== null &&
+    patientLng !== undefined;
 
   const hasAmbulance =
-    ambulanceLat != null &&
-    ambulanceLng != null;
+    ambulanceLat !== null &&
+    ambulanceLat !== undefined &&
+    ambulanceLng !== null &&
+    ambulanceLng !== undefined;
 
   const centerLat =
     patientLat ?? 20.5937;
@@ -85,14 +88,15 @@ export default function MapView({
   const centerLng =
     patientLng ?? 78.9629;
 
-  // ================= FETCH REAL ROUTE =================
+  // ================= FETCH ROAD ROUTE =================
   useEffect(() => {
     const fetchRoute = async () => {
       if (
         !hasPatient ||
         !hasAmbulance
-      )
+      ) {
         return;
+      }
 
       try {
         const response = await fetch(
@@ -127,8 +131,9 @@ export default function MapView({
         if (
           !data.routes ||
           !data.routes.length
-        )
+        ) {
           return;
+        }
 
         const encoded =
           data.routes[0].geometry;
@@ -157,8 +162,11 @@ export default function MapView({
 
   // ================= ANIMATE AMBULANCE =================
   useEffect(() => {
-    if (routeCoords.length === 0)
+    if (
+      routeCoords.length === 0
+    ) {
       return;
+    }
 
     let index = 0;
 
@@ -181,13 +189,13 @@ export default function MapView({
         setAnimatedPosition(
           routeCoords[index]
         );
-      }, 1200);
+      }, 1200); // Increase to 1500 or 2000 for slower movement
 
     return () =>
       clearInterval(interval);
   }, [routeCoords]);
 
-  return 
+  return (
     <MapContainer
       center={[centerLat, centerLng]}
       zoom={13}
@@ -248,7 +256,7 @@ export default function MapView({
         </Marker>
       )}
 
-      {/* REAL ROAD ROUTE */}
+      {/* ROAD ROUTE */}
       {routeCoords.length > 0 && (
         <Polyline
           positions={routeCoords}
