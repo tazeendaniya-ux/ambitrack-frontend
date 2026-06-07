@@ -285,14 +285,41 @@ export default function PatientDashboard() {
           }
         />
 
-        <input
+        <select
           style={inputStyle}
-          placeholder="Emergency Type"
           value={emergencyType}
           onChange={(e) =>
             setEmergencyType(e.target.value)
           }
-        />
+        >
+          <option value="">
+            Select Emergency Type
+          </option>
+
+          <option value="Cardiac Arrest">
+            ❤️ Cardiac Arrest
+          </option>
+
+          <option value="Major Accident">
+            🚗 Major Accident
+          </option>
+
+          <option value="Injury">
+            🤕 Injury
+          </option>
+
+          <option value="Breathing Problem">
+            🫁 Breathing Problem
+          </option>
+
+          <option value="Fever">
+            🤒 Fever
+          </option>
+
+          <option value="Other">
+            ⚠️ Other
+          </option>
+        </select>
 
         <button
           style={sosBtn}
@@ -312,6 +339,15 @@ export default function PatientDashboard() {
             />
 
             <StatCard
+              icon={<Ambulance size={32} />}
+              title="Priority"
+              value={
+                latestEmergency.priority ||
+                "Low"
+              }
+            />
+
+            <StatCard
               icon={<MapPinned size={32} />}
               title="Distance"
               value={`${distance.toFixed(2)} km`}
@@ -326,6 +362,31 @@ export default function PatientDashboard() {
 
           <div style={cardStyle}>
             <h2>🚑 Live Tracking Status</h2>
+
+            <p>
+              <strong>Priority:</strong>{" "}
+              <span
+                style={{
+                  padding: "6px 12px",
+                  borderRadius: "20px",
+                  color: "#fff",
+                  fontWeight: "700",
+                  background:
+                    latestEmergency.priority ===
+                    "Critical"
+                      ? "#DC2626"
+                      : latestEmergency.priority ===
+                        "High"
+                      ? "#EA580C"
+                      : latestEmergency.priority ===
+                        "Medium"
+                      ? "#CA8A04"
+                      : "#16A34A",
+                }}
+              >
+                {latestEmergency.priority}
+              </span>
+            </p>
 
             <p>
               <strong>Driver Location:</strong>{" "}
@@ -390,6 +451,8 @@ const inputStyle = {
   borderRadius: "12px",
   border: "1px solid #CBD5E1",
   fontSize: "16px",
+  background: "#fff",
+  boxSizing: "border-box",
 };
 
 const sosBtn = {
@@ -404,4 +467,3 @@ const sosBtn = {
   fontWeight: "700",
   cursor: "pointer",
 };
-
