@@ -181,13 +181,13 @@ export default function MapView({
         setAnimatedPosition(
           routeCoords[index]
         );
-      }, 500);
+      }, 1200);
 
     return () =>
       clearInterval(interval);
   }, [routeCoords]);
 
-  return (
+  return 
     <MapContainer
       center={[centerLat, centerLng]}
       zoom={13}
