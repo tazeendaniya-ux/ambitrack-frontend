@@ -22,7 +22,7 @@ L.Icon.Default.mergeOptions({
     "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
 });
 
-// ================= AUTO FIT MAP =================
+// ================= AUTO FIT =================
 function RecenterMap({
   patientLat,
   patientLng,
@@ -66,21 +66,16 @@ export default function MapView({
   ambulanceLat,
   ambulanceLng,
 }) {
-  const [routeCoords, setRouteCoords] = useState([]);
-  const [animatedPosition, setAnimatedPosition] =
-    useState(null);
+  const [routeCoords, setRouteCoords] =
+    useState([]);
 
   const hasPatient =
-    patientLat !== null &&
-    patientLat !== undefined &&
-    patientLng !== null &&
-    patientLng !== undefined;
+    patientLat != null &&
+    patientLng != null;
 
   const hasAmbulance =
-    ambulanceLat !== null &&
-    ambulanceLat !== undefined &&
-    ambulanceLng !== null &&
-    ambulanceLng !== undefined;
+    ambulanceLat != null &&
+    ambulanceLng != null;
 
   const centerLat =
     patientLat ?? 20.5937;
@@ -160,41 +155,6 @@ export default function MapView({
     hasAmbulance,
   ]);
 
-  // ================= ANIMATE AMBULANCE =================
-  useEffect(() => {
-    if (
-      routeCoords.length === 0
-    ) {
-      return;
-    }
-
-    let index = 0;
-
-    setAnimatedPosition(
-      routeCoords[0]
-    );
-
-    const interval =
-      setInterval(() => {
-        if (
-          index >=
-          routeCoords.length - 1
-        ) {
-          clearInterval(interval);
-          return;
-        }
-
-        index++;
-
-        setAnimatedPosition(
-          routeCoords[index]
-        );
-      }, 1000); // Increase to 1500 or 2000 for slower movement
-
-    return () =>
-      clearInterval(interval);
-  }, [routeCoords]);
-
   return (
     <MapContainer
       center={[centerLat, centerLng]}
@@ -213,16 +173,8 @@ export default function MapView({
       <RecenterMap
         patientLat={patientLat}
         patientLng={patientLng}
-        ambulanceLat={
-          animatedPosition
-            ? animatedPosition[0]
-            : ambulanceLat
-        }
-        ambulanceLng={
-          animatedPosition
-            ? animatedPosition[1]
-            : ambulanceLng
-        }
+        ambulanceLat={ambulanceLat}
+        ambulanceLng={ambulanceLng}
       />
 
       {/* PATIENT */}
@@ -239,19 +191,16 @@ export default function MapView({
         </Marker>
       )}
 
-      {/* ANIMATED AMBULANCE */}
-      {(animatedPosition ||
-        hasAmbulance) && (
+      {/* LIVE AMBULANCE */}
+      {hasAmbulance && (
         <Marker
-          position={
-            animatedPosition || [
-              ambulanceLat,
-              ambulanceLng,
-            ]
-          }
+          position={[
+            ambulanceLat,
+            ambulanceLng,
+          ]}
         >
           <Popup>
-            🚑 Ambulance Location
+            🚑 Live Ambulance Location
           </Popup>
         </Marker>
       )}
