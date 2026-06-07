@@ -181,7 +181,7 @@ export default function MapView({
         setAnimatedPosition(
           routeCoords[index]
         );
-      }, 100);
+      }, 500);
 
     return () =>
       clearInterval(interval);
