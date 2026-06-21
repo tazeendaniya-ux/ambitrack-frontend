@@ -9,39 +9,63 @@ export default function Login() {
   const { login } = useContext(UserContext);
   const navigate = useNavigate();
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [phone, setPhone] = useState("");
+  const [otp, setOtp] = useState("");
+  const [generatedOtp, setGeneratedOtp] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const generateOtp = () => {
+    if (!phone) {
+      toast.error("Please enter phone number");
+      return;
+    }
+
+    const newOtp = Math.floor(
+      100000 + Math.random() * 900000
+    ).toString();
+
+    setGeneratedOtp(newOtp);
+
+    // Demo OTP
+    toast.success(`Your OTP is ${newOtp}`);
+  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
 
     if (loading) return;
 
+    if (!generatedOtp) {
+      toast.error("Please generate OTP first");
+      return;
+    }
+
+    if (otp !== generatedOtp) {
+      toast.error("Invalid OTP");
+      return;
+    }
+
     setLoading(true);
 
     try {
       const response = await api.post("/auth/login", {
-        email,
-        password,
+        phone,
       });
 
       const user = response.data.user;
 
-      // Save user in context
       login(user);
 
-      // Backup in localStorage
       localStorage.setItem(
         "user",
         JSON.stringify(user)
       );
+
       localStorage.setItem(
         "role",
         user.role
       );
 
-      // Redirect immediately
       if (user.role === "patient") {
         navigate("/patient");
       } else if (user.role === "driver") {
@@ -50,13 +74,13 @@ export default function Login() {
         navigate("/hospital");
       }
 
-      // Show success message after navigation
       setTimeout(() => {
         toast.success("Login Successful!");
       }, 100);
 
-      setEmail("");
-      setPassword("");
+      setPhone("");
+      setOtp("");
+      setGeneratedOtp("");
     } catch (error) {
       console.error(error);
 
@@ -92,24 +116,35 @@ export default function Login() {
 
       <form onSubmit={handleLogin}>
         <input
-          type="email"
-          placeholder="Enter Email"
-          value={email}
+          type="tel"
+          placeholder="Enter Phone Number"
+          value={phone}
           onChange={(e) =>
-            setEmail(e.target.value)
+            setPhone(e.target.value)
           }
           style={inputStyle}
           required
         />
 
+        <button
+          type="button"
+          onClick={generateOtp}
+          style={buttonStyle}
+        >
+          Generate OTP
+        </button>
+
         <input
-          type="password"
-          placeholder="Enter Password"
-          value={password}
+          type="text"
+          placeholder="Enter OTP"
+          value={otp}
           onChange={(e) =>
-            setPassword(e.target.value)
+            setOtp(e.target.value)
           }
-          style={inputStyle}
+          style={{
+            ...inputStyle,
+            marginTop: "15px",
+          }}
           required
         />
 
@@ -117,6 +152,7 @@ export default function Login() {
           type="submit"
           style={{
             ...buttonStyle,
+            marginTop: "15px",
             opacity: loading ? 0.7 : 1,
             cursor: loading
               ? "not-allowed"
@@ -151,4 +187,5 @@ const buttonStyle = {
   border: "none",
   borderRadius: "8px",
   fontSize: "16px",
+  cursor: "pointer",
 };
